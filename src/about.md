@@ -16,12 +16,11 @@ permalink: /about/
     <span class="fact-label">Birthday</span>
     <span class="fact-value">February 27</span>
   </li>
-  <li class="fact-card">
-    <span class="fact-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
-    </span>
+  <li class="fact-card fact-card--photo">
+    <img src="{{ '/images/quezon-city.jpg' | url }}" alt="Quezon Memorial Circle in Quezon City" class="fact-photo" width="960" height="720" loading="lazy">
     <span class="fact-label">Hometown</span>
     <span class="fact-value">Quezon City</span>
+    <span class="fact-credit">Photo: Patrickroque01, <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license noopener" target="_blank">CC BY-SA 4.0</a>, via Wikimedia Commons</span>
   </li>
   <li class="fact-card">
     <span class="fact-icon" aria-hidden="true">
@@ -37,12 +36,11 @@ permalink: /about/
     <span class="fact-label">Grade level</span>
     <span class="fact-value">Grade 12 &middot; Senior High School</span>
   </li>
-  <li class="fact-card">
-    <span class="fact-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9c0-3 3.6-6 8-6s8 3 8 6-3.6 10-8 10-8-7-8-10Z"/><path d="M4 9h16"/></svg>
-    </span>
+  <li class="fact-card fact-card--photo">
+    <img src="{{ '/images/adobo.jpg' | url }}" alt="Chicken adobo served over rice" class="fact-photo" width="960" height="724" loading="lazy">
     <span class="fact-label">Favorite food</span>
     <span class="fact-value">Adobo</span>
+    <span class="fact-credit">Photo: Jack Lawrence, <a href="https://creativecommons.org/licenses/by/2.0/" rel="license noopener" target="_blank">CC BY 2.0</a>, via Wikimedia Commons</span>
   </li>
   <li class="fact-card">
     <span class="fact-icon" aria-hidden="true">
