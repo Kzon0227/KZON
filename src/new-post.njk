@@ -1,0 +1,139 @@
+---
+layout: layouts/base.njk
+title: New Post
+permalink: /new-post/
+---
+<h1>Write a new post</h1>
+<p class="composer-intro">
+  Fill this in and click <strong>Generate post file</strong>. It creates a
+  ready-to-use Markdown file on your device — nothing is uploaded or
+  published automatically. Save the downloaded file into <code>src/posts/</code>
+  in the KZON repo, then commit and push (or upload it on GitHub) to publish it.
+</p>
+
+<form id="post-form" class="post-form">
+  <label for="post-title">Title</label>
+  <input id="post-title" name="title" type="text" placeholder="My new post" required>
+
+  <label for="post-description">Description</label>
+  <input id="post-description" name="description" type="text" placeholder="A one-line summary for the homepage" required>
+
+  <label for="post-date">Date</label>
+  <input id="post-date" name="date" type="date" required>
+
+  <label for="post-body">Post content (Markdown)</label>
+  <textarea id="post-body" name="body" rows="12" placeholder="Write your post here..." required></textarea>
+
+  <div class="post-form-actions">
+    <button type="submit" id="generate-btn">Generate post file</button>
+    <button type="button" id="copy-btn">Copy Markdown</button>
+    <button type="button" id="clear-btn">Clear</button>
+  </div>
+</form>
+
+<p id="form-status" class="form-status" role="status"></p>
+
+<section id="preview-section" class="preview-section" hidden>
+  <h2>Preview</h2>
+  <p class="post-meta">File name: <code id="preview-filename"></code></p>
+  <pre id="preview-output"></pre>
+</section>
+
+<script>
+(function () {
+  const form = document.getElementById("post-form");
+  const dateInput = document.getElementById("post-date");
+  const statusEl = document.getElementById("form-status");
+  const previewSection = document.getElementById("preview-section");
+  const previewOutput = document.getElementById("preview-output");
+  const previewFilename = document.getElementById("preview-filename");
+  const copyBtn = document.getElementById("copy-btn");
+  const clearBtn = document.getElementById("clear-btn");
+
+  dateInput.valueAsDate = new Date();
+
+  function slugify(text) {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "untitled-post";
+  }
+
+  function escapeYaml(text) {
+    return text.replace(/"/g, '\\"');
+  }
+
+  function buildMarkdown(data) {
+    return [
+      "---",
+      `title: "${escapeYaml(data.title)}"`,
+      `description: "${escapeYaml(data.description)}"`,
+      `date: ${data.date}`,
+      "---",
+      "",
+      data.body.trim(),
+      "",
+    ].join("\n");
+  }
+
+  let lastMarkdown = "";
+  let lastFilename = "";
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    const data = {
+      title: form.title.value.trim(),
+      description: form.description.value.trim(),
+      date: form.date.value,
+      body: form.body.value,
+    };
+
+    if (!data.title || !data.description || !data.date || !data.body.trim()) {
+      statusEl.textContent = "Please fill in every field before generating.";
+      return;
+    }
+
+    lastMarkdown = buildMarkdown(data);
+    lastFilename = slugify(data.title) + ".md";
+
+    const blob = new Blob([lastMarkdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = lastFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    previewFilename.textContent = "src/posts/" + lastFilename;
+    previewOutput.textContent = lastMarkdown;
+    previewSection.hidden = false;
+    statusEl.textContent = "Downloaded " + lastFilename + " — move it into src/posts/ and push to publish.";
+  });
+
+  copyBtn.addEventListener("click", async function () {
+    if (!lastMarkdown) {
+      statusEl.textContent = "Generate a post first, then copy it.";
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(lastMarkdown);
+      statusEl.textContent = "Markdown copied to clipboard.";
+    } catch (err) {
+      statusEl.textContent = "Couldn't access the clipboard. Select the preview text and copy it manually.";
+    }
+  });
+
+  clearBtn.addEventListener("click", function () {
+    form.reset();
+    dateInput.valueAsDate = new Date();
+    previewSection.hidden = true;
+    statusEl.textContent = "";
+    lastMarkdown = "";
+    lastFilename = "";
+  });
+})();
+</script>
