@@ -5,10 +5,10 @@ permalink: /new-post/
 ---
 <h1>Write a new post</h1>
 <p class="composer-intro">
-  Fill this in and click <strong>Generate post file</strong>. It creates a
-  ready-to-use Markdown file on your device — nothing is uploaded or
-  published automatically. Save the downloaded file into <code>src/posts/</code>
-  in the KZON repo, then commit and push (or upload it on GitHub) to publish it.
+  Fill this in, then either <strong>Publish directly</strong> (commits the
+  post to GitHub and the site rebuilds automatically in about a minute) or
+  <strong>Generate post file</strong> to just download the Markdown and add
+  it yourself later.
 </p>
 
 <form id="post-form" class="post-form">
@@ -24,10 +24,21 @@ permalink: /new-post/
   <label for="post-body">Post content (Markdown)</label>
   <textarea id="post-body" name="body" rows="12" placeholder="Write your post here..." required></textarea>
 
+  <label for="post-token">GitHub token (only needed to publish directly)</label>
+  <input id="post-token" name="token" type="password" placeholder="ghp_..." autocomplete="off">
+  <p class="field-hint">
+    Kept only in this browser tab (session storage) — never saved to the
+    repo, never sent anywhere except api.github.com. Needs a token with
+    <code>repo</code> (or fine-grained "Contents: Read and write") access to
+    this repository. Clear it with the button below when you're done.
+  </p>
+
   <div class="post-form-actions">
+    <button type="button" id="publish-btn">Publish directly</button>
     <button type="submit" id="generate-btn">Generate post file</button>
     <button type="button" id="copy-btn">Copy Markdown</button>
-    <button type="button" id="clear-btn">Clear</button>
+    <button type="button" id="clear-token-btn">Clear saved token</button>
+    <button type="button" id="clear-btn">Clear form</button>
   </div>
 </form>
 
@@ -41,16 +52,41 @@ permalink: /new-post/
 
 <script>
 (function () {
+  const REPO_OWNER = "Kzon0227";
+  const REPO_NAME = "KZON";
+  const BRANCH = "main";
+  const TOKEN_KEY = "kzon_new_post_token";
+
   const form = document.getElementById("post-form");
   const dateInput = document.getElementById("post-date");
+  const tokenInput = document.getElementById("post-token");
   const statusEl = document.getElementById("form-status");
   const previewSection = document.getElementById("preview-section");
   const previewOutput = document.getElementById("preview-output");
   const previewFilename = document.getElementById("preview-filename");
   const copyBtn = document.getElementById("copy-btn");
   const clearBtn = document.getElementById("clear-btn");
+  const clearTokenBtn = document.getElementById("clear-token-btn");
+  const publishBtn = document.getElementById("publish-btn");
 
   dateInput.valueAsDate = new Date();
+
+  try {
+    const savedToken = sessionStorage.getItem(TOKEN_KEY);
+    if (savedToken) tokenInput.value = savedToken;
+  } catch (err) {
+    /* sessionStorage unavailable (private mode, etc.) — token just won't persist across reloads */
+  }
+
+  tokenInput.addEventListener("input", function () {
+    try {
+      if (tokenInput.value) {
+        sessionStorage.setItem(TOKEN_KEY, tokenInput.value);
+      } else {
+        sessionStorage.removeItem(TOKEN_KEY);
+      }
+    } catch (err) {}
+  });
 
   function slugify(text) {
     return text
@@ -77,23 +113,48 @@ permalink: /new-post/
     ].join("\n");
   }
 
-  let lastMarkdown = "";
-  let lastFilename = "";
+  function utf8ToBase64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
 
-  form.addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    const data = {
+  function readFormData() {
+    return {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
       date: form.date.value,
       body: form.body.value,
+      token: tokenInput.value.trim(),
     };
+  }
 
+  function validate(data, { requireToken }) {
     if (!data.title || !data.description || !data.date || !data.body.trim()) {
-      statusEl.textContent = "Please fill in every field before generating.";
-      return;
+      statusEl.textContent = "Please fill in title, description, date, and body.";
+      return false;
     }
+    if (requireToken && !data.token) {
+      statusEl.textContent = "Add a GitHub token to publish directly, or use “Generate post file” instead.";
+      return false;
+    }
+    return true;
+  }
+
+  let lastMarkdown = "";
+  let lastFilename = "";
+
+  function showPreview(filename, markdown) {
+    previewFilename.textContent = "src/posts/" + filename;
+    previewOutput.textContent = markdown;
+    previewSection.hidden = false;
+  }
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const data = readFormData();
+    if (!validate(data, { requireToken: false })) return;
 
     lastMarkdown = buildMarkdown(data);
     lastFilename = slugify(data.title) + ".md";
@@ -108,15 +169,71 @@ permalink: /new-post/
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    previewFilename.textContent = "src/posts/" + lastFilename;
-    previewOutput.textContent = lastMarkdown;
-    previewSection.hidden = false;
+    showPreview(lastFilename, lastMarkdown);
     statusEl.textContent = "Downloaded " + lastFilename + " — move it into src/posts/ and push to publish.";
+  });
+
+  publishBtn.addEventListener("click", async function () {
+    const data = readFormData();
+    if (!validate(data, { requireToken: true })) return;
+
+    const markdown = buildMarkdown(data);
+    const filename = slugify(data.title) + ".md";
+    const path = "src/posts/" + filename;
+    const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
+    const headers = {
+      Authorization: "Bearer " + data.token,
+      Accept: "application/vnd.github+json",
+    };
+
+    publishBtn.disabled = true;
+    statusEl.textContent = "Checking for an existing file with that name...";
+
+    try {
+      let sha;
+      const existing = await fetch(apiUrl + "?ref=" + BRANCH, { headers });
+      if (existing.status === 200) {
+        const existingJson = await existing.json();
+        sha = existingJson.sha;
+      } else if (existing.status !== 404) {
+        const errJson = await existing.json().catch(() => ({}));
+        throw new Error(errJson.message || ("GitHub returned " + existing.status));
+      }
+
+      statusEl.textContent = sha ? "File exists — updating it..." : "Publishing new post...";
+
+      const body = {
+        message: (sha ? "Update post: " : "Add post: ") + data.title,
+        content: utf8ToBase64(markdown),
+        branch: BRANCH,
+      };
+      if (sha) body.sha = sha;
+
+      const putRes = await fetch(apiUrl, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!putRes.ok) {
+        const errJson = await putRes.json().catch(() => ({}));
+        throw new Error(errJson.message || ("GitHub returned " + putRes.status));
+      }
+
+      lastMarkdown = markdown;
+      lastFilename = filename;
+      showPreview(filename, markdown);
+      statusEl.textContent = "Published " + path + " to GitHub. The site will rebuild and go live in about a minute.";
+    } catch (err) {
+      statusEl.textContent = "Publish failed: " + err.message;
+    } finally {
+      publishBtn.disabled = false;
+    }
   });
 
   copyBtn.addEventListener("click", async function () {
     if (!lastMarkdown) {
-      statusEl.textContent = "Generate a post first, then copy it.";
+      statusEl.textContent = "Generate or publish a post first, then copy it.";
       return;
     }
     try {
@@ -125,6 +242,12 @@ permalink: /new-post/
     } catch (err) {
       statusEl.textContent = "Couldn't access the clipboard. Select the preview text and copy it manually.";
     }
+  });
+
+  clearTokenBtn.addEventListener("click", function () {
+    tokenInput.value = "";
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (err) {}
+    statusEl.textContent = "Token cleared.";
   });
 
   clearBtn.addEventListener("click", function () {
