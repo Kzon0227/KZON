@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if title %}{{ title }} · {% endif %}KZON Blog</title>
+  <meta name="description" content="{{ description or 'A blog about ideas worth writing down.' }}">
+  <link rel="stylesheet" href="{{ '/css/style.css' | url }}">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="{{ '/' | url }}">KZON</a>
+      <nav class="site-nav">
+        <a href="{{ '/' | url }}">Home</a>
+        <a href="{{ '/about/' | url }}">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    {{ content | safe }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; {{ currentYear }} KZON. Built with Eleventy, hosted on GitHub Pages.</p>
+    </div>
+  </footer>
+</body>
+</html>

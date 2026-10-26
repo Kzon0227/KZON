@@ -1,0 +1,16 @@
+{
+  "name": "kzon-blog",
+  "version": "1.0.0",
+  "description": "A static blog built with Eleventy, deployed to GitHub Pages.",
+  "scripts": {
+    "build": "eleventy",
+    "serve": "eleventy --serve",
+    "debug": "DEBUG=* eleventy"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.0.0"
+  },
+  "dependencies": {
+    "luxon": "^3.5.0"
+  }
+}

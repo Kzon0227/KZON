@@ -1,0 +1,15 @@
+---
+layout: layouts/base.njk
+title: Home
+---
+<h1>Latest posts</h1>
+
+<ul class="post-list">
+  {% for post in collections.posts %}
+  <li class="post-list-item">
+    <a class="post-list-title" href="{{ post.url | url }}">{{ post.data.title }}</a>
+    <p class="post-meta">{{ post.data.date | postDate }}</p>
+    <p>{{ post.data.description }}</p>
+  </li>
+  {% endfor %}
+</ul>
